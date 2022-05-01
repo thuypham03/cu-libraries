@@ -24,6 +24,20 @@ class User(db.Model):
         self.net_id = kwargs.get("net_id")
         self.password = kwargs.get("password")
 
+    def simple_serialize_user(self):
+        return {
+            "id": self.id,
+            "net_id": self.net_id,
+            # "password": self.password // Removed for security
+        }
+
+    def serialize_user(self):
+        return {
+            "id": self.id,
+            "net_id": self.net_id,
+            "password": self.password
+        }
+
 
 class Booking(db.Model):
     """
@@ -48,6 +62,24 @@ class Booking(db.Model):
         self.time_start = kwargs.get("time_start")
         self.time_end = kwargs.get("time_end")
 
+    def simple_serialize_booking(self):
+        return {
+            "id": self.id,
+            "time_start": self.time_start,
+            "time_end": self.time_end
+        }
+
+    def serialize_booking(self):
+        user = User.query.filter_by(id=(self.user_id)).first()
+        room = Room.query.filter_by(id=(self.room_id)).first()
+        return {
+            "id": self.id,
+            "user": user.simple_serialize_user(),
+            "room": room.simple_serialize_user(),
+            "time_start": self.time_start,
+            "time_end": self.time_end
+        }
+
 
 class Library(db.Model):
     """
@@ -71,6 +103,19 @@ class Library(db.Model):
         self.time_start = kwargs.get("time_start")
         self.time_end = kwargs.get("time_end")
 
+    def simple_serialize_library(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "location": self.location,
+            "time_start": self.time_start,
+            "time_end": self.time_end
+        }
+
+    # Not needed
+    # def serialize_library(self):
+    #     pass
+
 
 class Room(db.model):
     """
@@ -92,3 +137,19 @@ class Room(db.model):
         self.library_id = kwargs.get("library_id")
         self.capacity = kwargs.get("capacity")
         self.description = kwargs.get("description")
+
+    def simple_serialize_room(self):
+        return {
+            "id": self.id,
+            "capacity": self.capacity,
+            "description": self.description
+        }
+
+    def serialize_room(self):
+        library = Library.query.filter_by(id=(self.library_id)).first()
+        return {
+            "id": self.id,
+            "library": library.simple_serialize_library(),
+            "capacity": self.capacity,
+            "description": self.description
+        }
