@@ -24,14 +24,20 @@ class User(db.Model):
         self.net_id = kwargs.get("net_id")
         self.password = kwargs.get("password")
 
-    def simple_serialize_user(self):
+    def simple_serialize(self):
+        """
+        Simple serialize User object
+        """
         return {
             "id": self.id,
             "net_id": self.net_id,
             # "password": self.password // Removed for security
         }
 
-    def serialize_user(self):
+    def serialize(self):
+        """
+        Serialize User object
+        """
         return {
             "id": self.id,
             "net_id": self.net_id,
@@ -51,7 +57,7 @@ class Booking(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=False)
     time_start = db.Column(db.DateTime, nullable=False)
-    time_end = db.Column(db.Datetime, nullable=False)
+    time_end = db.Column(db.DateTime, nullable=False)
 
     def __init__(self, **kwargs):
         """
@@ -62,20 +68,26 @@ class Booking(db.Model):
         self.time_start = kwargs.get("time_start")
         self.time_end = kwargs.get("time_end")
 
-    def simple_serialize_booking(self):
+    def simple_serialize(self):
+        """
+        Simple serialize Booking object
+        """
         return {
             "id": self.id,
             "time_start": self.time_start,
             "time_end": self.time_end
         }
 
-    def serialize_booking(self):
+    def serialize(self):
+        """
+        Serialize Booking object
+        """
         user = User.query.filter_by(id=(self.user_id)).first()
         room = Room.query.filter_by(id=(self.room_id)).first()
         return {
             "id": self.id,
-            "user": user.simple_serialize_user(),
-            "room": room.simple_serialize_user(),
+            "user": user.simple_serialize(),
+            "room": room.simple_serialize(),
             "time_start": self.time_start,
             "time_end": self.time_end
         }
@@ -92,7 +104,7 @@ class Library(db.Model):
     name = db.Column(db.String, nullable=False)
     location = db.Column(db.String, nullable=False)
     time_start = db.Column(db.DateTime, nullable=False)
-    time_end = db.Column(db.Datetime, nullable=False)
+    time_end = db.Column(db.DateTime, nullable=False)
 
     def __init__(self, **kwargs):
         """
@@ -103,7 +115,10 @@ class Library(db.Model):
         self.time_start = kwargs.get("time_start")
         self.time_end = kwargs.get("time_end")
 
-    def simple_serialize_library(self):
+    def simple_serialize(self):
+        """
+        Simple serialize Library object
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -117,7 +132,7 @@ class Library(db.Model):
     #     pass
 
 
-class Room(db.model):
+class Room(db.Model):
     """
     Room model
 
@@ -138,18 +153,24 @@ class Room(db.model):
         self.capacity = kwargs.get("capacity")
         self.description = kwargs.get("description")
 
-    def simple_serialize_room(self):
+    def simple_serialize(self):
+        """
+        Simple serialize Room object
+        """
         return {
             "id": self.id,
             "capacity": self.capacity,
             "description": self.description
         }
 
-    def serialize_room(self):
+    def serialize(self):
+        """
+        Serialize Room object
+        """
         library = Library.query.filter_by(id=(self.library_id)).first()
         return {
             "id": self.id,
-            "library": library.simple_serialize_library(),
+            "library": library.simple_serialize(),
             "capacity": self.capacity,
             "description": self.description
         }
