@@ -32,6 +32,23 @@ def get_users():
         "users": [user.simple_serialize() for user in User.query.all()]
     }) 
 
+@app.route("/users/", methods=["POST"])
+def create_user():
+    """
+    Endpoint for creating user
+    """
+    body = json.loads(request.data)
+    net_id = body.get("net_id", -1)
+    password = body.get("password", -1)
+
+    if net_id == -1 or password == -1:
+        return failure_response("Missing request information", 400)
+
+    new_user = User(net_id=net_id, password=password)
+    db.session.add(new_user)
+    db.session.commit()
+    return success_response(new_user.simple_serialize(), 201)
+
 @app.route("/users/<int:user_id>/")
 def get_user_by_id(user_id):
     """
@@ -161,10 +178,42 @@ def create_booking():
     if timeslot != None:
         return failure_response("Timeslot not available")
 
-    new_timeslot = Timeslot(user_id, room_id, time_start)
+    new_timeslot = Timeslot(user_id=user_id, room_id=room_id, time_start=time_start)
     db.session.add(new_timeslot)
     db.session.commit()
     return success_response(new_timeslot.simple_serialize(), 201)
+
+@app.route("/bookings/users/<int:user_id>/")
+def get_bookings_by_user(user_id):
+    """
+    Endpoint for getting bookings by user_id
+    """
+    timeslots = Timeslot.query.filter_by(user_id=user_id)
+
+    res = []
+    for timeslot in timeslots:
+        booking = {
+            "id": timeslot.getID(),
+            "library_name": timeslot.getLibraryName(),
+            "room_name": timeslot.getRoomName(),
+            "time_start": timeslot.getTimeStart()
+        }
+        res.append(booking)
+
+    return success_response({"bookings": res})
+
+@app.route("/bookings/delete/<int:timeslot_id>/", methods=["DELETE"])
+def delete_booking(timeslot_id):
+    """
+    Endpoint for deleting booking by timeslot_id
+    """
+    timeslot = Timeslot.query.filter_by(id=timeslot_id).first()
+    if timeslot is None:
+        return failure_response("Booking not found")
+
+    db.session.delete(timeslot)
+    db.session.commit()
+    return success_response(timeslot.simple_serialize())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
