@@ -1,16 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
-# from dateutil import datetime
 
 db = SQLAlchemy()
-
-# --------------------------------------
-
 
 class User(db.Model):
     """
     User model
 
-    Has one-to-many relationship with Booking model
+    Has one-to-many relationship with Timeslot model
     """
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -31,7 +27,6 @@ class User(db.Model):
         return {
             "id": self.id,
             "net_id": self.net_id,
-            # "password": self.password // Removed for security
         }
 
     def serialize(self):
@@ -45,37 +40,39 @@ class User(db.Model):
         }
 
 
-class Booking(db.Model):
+class Timeslot(db.Model):
     """
-    Booking model
+    Timeslot model
 
-    Has many-to-one relationship with Booking model
-    Has many-to-one relationship with Booking model
+    Has many-to-one relationship with User model
+    Has many-to-one relationship with Room model
     """
-    __tablename__ = "bookings"
+    __tablename__ = "timeslots"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=False)
-    time_start = db.Column(db.DateTime, nullable=False)
-    time_end = db.Column(db.DateTime, nullable=False)
+    time_start = db.Column(db.Integer, nullable=False)
+
+    def getID(self):
+        return self.id
 
     def __init__(self, **kwargs):
         """
-        Initialize Booking object
+        Initialize Timeslot object
         """
         self.user_id = kwargs.get("user_id")
         self.room_id = kwargs.get("room_id")
         self.time_start = kwargs.get("time_start")
-        self.time_end = kwargs.get("time_end")
 
     def simple_serialize(self):
         """
-        Simple serialize Booking object
+        Simple serialize Timeslot object
         """
         return {
             "id": self.id,
+            "user_id": self.user_id,
+            "room_id": self.room_id,
             "time_start": self.time_start,
-            "time_end": self.time_end
         }
 
     def serialize(self):
@@ -88,10 +85,8 @@ class Booking(db.Model):
             "id": self.id,
             "user": user.simple_serialize(),
             "room": room.simple_serialize(),
-            "time_start": self.time_start,
-            "time_end": self.time_end
+            "time_start": self.time_start
         }
-
 
 class Library(db.Model):
     """
@@ -102,48 +97,53 @@ class Library(db.Model):
     __tablename__ = "libraries"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, nullable=False)
-    location = db.Column(db.String, nullable=False)
-    time_start = db.Column(db.DateTime, nullable=False)
-    time_end = db.Column(db.DateTime, nullable=False)
+    area_id = db.Column(db.Integer, nullable=False)
+    time_start = db.Column(db.Integer, nullable=False)
+    time_end = db.Column(db.Integer, nullable=False)
+
+    def getTimeStart(self):
+        return self.time_start
+    
+    def getTimeEnd(self):
+        return self.time_end
 
     def __init__(self, **kwargs):
         """
         Initialize Library object
         """
         self.name = kwargs.get("name")
-        self.location = kwargs.get("location")
+        self.area_id = kwargs.get("area_id")
         self.time_start = kwargs.get("time_start")
         self.time_end = kwargs.get("time_end")
 
-    def simple_serialize(self):
+    def serialize(self):
         """
         Simple serialize Library object
         """
         return {
             "id": self.id,
             "name": self.name,
-            "location": self.location,
+            "area_id": self.area_id,
             "time_start": self.time_start,
             "time_end": self.time_end
         }
-
-    # Not needed
-    # def serialize_library(self):
-    #     pass
 
 
 class Room(db.Model):
     """
     Room model
 
-    Has many-to-one relationship with Booking model
+    Has many-to-one relationship with Timeslot model
     """
     __tablename__ = "rooms"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     library_id = db.Column(db.Integer, db.ForeignKey(
         "libraries.id"), nullable=False)
+    name = db.Column(db.String, nullable=False)
     capacity = db.Column(db.Integer, nullable=False)
-    description = db.Column(db.String, nullable=False)
+
+    def getID(self):
+        return self.id
 
     def __init__(self, **kwargs):
         """
@@ -151,7 +151,7 @@ class Room(db.Model):
         """
         self.library_id = kwargs.get("library_id")
         self.capacity = kwargs.get("capacity")
-        self.description = kwargs.get("description")
+        self.name = kwargs.get("name")
 
     def simple_serialize(self):
         """
@@ -159,8 +159,9 @@ class Room(db.Model):
         """
         return {
             "id": self.id,
+            "library_id": self.library_id,
+            "name": self.name,
             "capacity": self.capacity,
-            "description": self.description
         }
 
     def serialize(self):
@@ -171,6 +172,6 @@ class Room(db.Model):
         return {
             "id": self.id,
             "library": library.simple_serialize(),
+            "name": self.name,
             "capacity": self.capacity,
-            "description": self.description
         }
