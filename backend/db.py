@@ -1,5 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-from matplotlib.style import library
 
 db = SQLAlchemy()
 
