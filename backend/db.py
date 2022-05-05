@@ -36,6 +36,15 @@ class Asset(db.Model):
         """
         self.create(kwargs.get("image_data"))
 
+    def serialize(self):
+        """
+        Serializes an Asset object
+        """
+        return {
+            "url": f"{self.base_url}/{self.salt}.{self.extension}",
+            "created_at": str(self.created_at)
+        }
+
     def create(self, image_data):
         """
         Given an image in base64 form, does the following:

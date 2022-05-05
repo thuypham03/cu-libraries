@@ -1,5 +1,6 @@
+from email.mime import image
 import json
-from db import db, User, Timeslot, Library, Room
+from db import db, Asset, User, Timeslot, Library, Room
 from flask import Flask, request
 import os
 
@@ -214,6 +215,22 @@ def delete_booking(timeslot_id):
     db.session.delete(timeslot)
     db.session.commit()
     return success_response(timeslot.simple_serialize())
+
+@app.route("/upload/", methods=["POST"])
+def upload():
+    """
+    Endpoint for uploading an image to AWS given its base64 form,
+    then storing/returning the URL of that image
+    """
+    body = json.loads(request.data)
+    image_data = body.get("image_data")
+    if image_data is None:
+        return failure_response("No base64 image passed in!")
+
+    asset = Asset(image_data = image_data)
+    db.session.add(asset)
+    db.session.commit()
+    return success_response(asset.serialize(), 201)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
