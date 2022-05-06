@@ -1,6 +1,6 @@
-from email.mime import image
 import json
-from db import db, Asset, User, Timeslot, Library, Room
+from db import db, User, Booking, Library, Room, Asset
+
 from flask import Flask, request
 import os
 
@@ -25,18 +25,22 @@ def success_response(data, code=200):
 def failure_response(message, code=404):
     return json.dumps({"error": message}), code
 
-# routes
-
+# routes 
+@app.route("/")
+def greeting():
+    """
+    Endpoint for greeting
+    """
+    return success_response("Welcome to BOOKED! Please try out other routes ヽ(o＾▽＾o)ノ")
 
 @app.route("/users/")
 def get_users():
     """
     Endpoint for getting all users
     """
-    return success_response({
-        "users": [user.simple_serialize() for user in User.query.all()]
-    })
-
+    return success_response(
+        {"users": [user.simple_serialize() for user in User.query.all()]}
+    ) 
 
 @app.route("/users/", methods=["POST"])
 def create_user():
@@ -72,9 +76,9 @@ def get_libraries():
     """
     Endpoint for getting all libraries
     """
-    return success_response({
-        "libraries": [lib.serialize() for lib in Library.query.all()]
-    })
+    return success_response(
+        {"libraries": [lib.serialize() for lib in Library.query.all()]}
+    )
 
 
 @app.route("/libraries/", methods=["POST"])
@@ -104,9 +108,9 @@ def get_libraries_by_area(area_id):
     Endpoint for getting libraries by area_id
     """
     libraries = Library.query.filter_by(area_id=area_id)
-    return success_response({
-        "libraries": [lib.serialize() for lib in libraries]
-    })
+    return success_response(
+       {"libraries": [lib.serialize() for lib in libraries]}
+    )
 
 
 @app.route("/rooms/")
@@ -114,9 +118,9 @@ def get_rooms():
     """
     Endpoint for getting all rooms
     """
-    return success_response({
-        "rooms": [room.simple_serialize() for room in Room.query.all()]
-    })
+    return success_response(
+        {"rooms": [room.simple_serialize() for room in Room.query.all()]}
+    ) 
 
 
 @app.route("/rooms/", methods=["POST"])
@@ -157,9 +161,8 @@ def get_rooms_by_library(library_id):
     for room in rooms:
         avail = []
         for time in range(time_start, time_end):
-            timeslot = Timeslot.query.filter_by(
-                room_id=room.getID(), time_start=time).first()
-            if timeslot == None:
+            booking = Booking.query.filter_by(room_id=room.getID(), time_start=time).first()
+            if booking == None:
                 avail.append(time)
 
         serialize = room.simple_serialize()
@@ -175,65 +178,106 @@ def create_booking():
     Endpoint for creating the booking
     """
     body = json.loads(request.data)
-    user_id = body.get("user_id", -1)
+    net_id = body.get("net_id", -1)
     room_id = body.get("room_id", -1)
     time_start = body.get("time_start", -1)
 
-    if user_id == -1 or room_id == -1 or time_start == -1:
+    if net_id == -1 or room_id == -1 or time_start == -1:
         return failure_response("Missing request information", 400)
 
-    user = User.query.filter_by(id=user_id).first()
+
+    user = User.query.filter_by(net_id=net_id).first()
     if user is None:
         return failure_response("User not found")
+    user_id = user.getID()
 
     room = Room.query.filter_by(id=room_id).first()
     if room is None:
         return failure_response("Room not found")
 
-    timeslot = Timeslot.query.filter_by(
-        user_id=user_id, room_id=room_id, time_start=time_start).first()
-    if timeslot != None:
-        return failure_response("Timeslot not available")
+    booking = Booking.query.filter_by(user_id=user_id, room_id=room_id, time_start=time_start).first()
+    if booking != None:
+        return failure_response("Booking not available")
 
-    new_timeslot = Timeslot(
-        user_id=user_id, room_id=room_id, time_start=time_start)
-    db.session.add(new_timeslot)
+    new_booking = Booking(user_id=user_id, room_id=room_id, time_start=time_start)
+    db.session.add(new_booking)
+
     db.session.commit()
-    return success_response(new_timeslot.simple_serialize(), 201)
+    return success_response(new_booking.simple_serialize(), 201)
 
+  
+@app.route("/bookings/users/<string:net_id>/")
+def get_bookings_by_user(net_id):
+    """
+    Endpoint for getting bookings by net_id
+    """
+    user = User.query.filter_by(net_id=net_id).first()
+    if user is None:
+        return failure_response("User not found")
+    user_id = user.getID()
 
-@app.route("/bookings/users/<int:user_id>/")
-def get_bookings_by_user(user_id):
-    """
-    Endpoint for getting bookings by user_id
-    """
-    timeslots = Timeslot.query.filter_by(user_id=user_id)
+    bookings = Booking.query.filter_by(user_id=user_id)
 
     res = []
-    for timeslot in timeslots:
-        booking = {
-            "id": timeslot.getID(),
-            "library_name": timeslot.getLibraryName(),
-            "room_name": timeslot.getRoomName(),
-            "time_start": timeslot.getTimeStart()
+    for booking in bookings:
+        temp = {
+            "id": booking.getID(),
+            "library_name": booking.getLibraryName(),
+            "room_name": booking.getRoomName(),
+            "time_start": booking.getTimeStart()
         }
-        res.append(booking)
+        res.append(temp)
 
-    return success_response({"bookings": res})
+    return success_response({"bookings":res})
 
 
-@app.route("/bookings/delete/<int:timeslot_id>/", methods=["DELETE"])
-def delete_booking(timeslot_id):
+@app.route("/bookings/delete/<int:booking_id>/", methods=["DELETE"])
+def delete_booking(booking_id):
     """
-    Endpoint for deleting booking by timeslot_id
+    Endpoint for deleting booking by booking_id
     """
-    timeslot = Timeslot.query.filter_by(id=timeslot_id).first()
-    if timeslot is None:
+    booking = Booking.query.filter_by(id=booking_id).first()
+    if booking is None:
         return failure_response("Booking not found")
 
-    db.session.delete(timeslot)
+    db.session.delete(booking)
     db.session.commit()
-    return success_response(timeslot.simple_serialize())
+    return success_response(booking.simple_serialize())
+
+  
+@app.route("/photos/")
+def get_photo():
+    """
+    Endpoint for getting all photos
+    """
+    return success_response(
+        {"photos": [photo.serialize() for photo in Asset.query.all()]}
+    ) 
+
+  
+@app.route("/libraries/upload/<int:library_id>/", methods=["POST"])
+def upload(library_id):
+    """
+    Endpoint for uploading an image of library to AWS given its base64 form,
+    then storing/returning the URL of that image
+    """
+    body = json.loads(request.data)
+    image_data = body.get("image_data", -1)
+    if image_data == -1:
+        return failure_response("No base64 image found")
+
+    library = Library.query.filter_by(id=library_id).first()
+    if library is None:
+        return failure_response("Library not found")
+
+    asset = Asset.query.filter_by(library_id=library_id).first()
+    if asset is not None:
+        db.session.delete(asset)
+
+    new_asset = Asset(library_id=library_id, image_data=image_data)
+    db.session.add(new_asset)
+    db.session.commit()
+    return success_response(new_asset.serialize(), 201)
 
 
 @app.route("/upload/", methods=["POST"])

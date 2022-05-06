@@ -10,7 +10,6 @@ from PIL import Image
 import random
 import re
 import string
-from matplotlib.style import library
 
 db = SQLAlchemy()
 
@@ -19,53 +18,61 @@ BASE_DIR = os.getcwd()
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
 S3_BASE_URL = f"https://{S3_BUCKET_NAME}.s3.us-east-1.amazonaws.com"
 
-
 class Asset(db.Model):
+    """
+    Asset model
+
+    Has one-to-one relationship with Library model
+    """
     __tablename__ = "assets"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     base_url = db.Column(db.String, nullable=True)
-    salt = db.Column(db.String, nullable=False)
+    name = db.Column(db.String, nullable=False)
     extension = db.Column(db.String, nullable=False)
     width = db.Column(db.Integer, nullable=False)
     height = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
+    library_id = db.Column(db.Integer, db.ForeignKey(
+        "libraries.id"), nullable=False)
+
+    def getURL(self):
+        return f"{self.base_url}/{self.name}.{self.extension}"
+
+    def _getLibraryName(self):
+        library = Library.query.filter_by(id=self.library_id).first()
+        name = library.getName()
+        return ''.join(name.split())
 
     def __init__(self, **kwargs):
         """
         Initializes an Asset object
         """
+        self.library_id = kwargs.get("library_id")
+        self.name = self._getLibraryName()
         self.create(kwargs.get("image_data"))
 
     def serialize(self):
         """
-        Serializes an Asset object
+        Serialize an Asset object
         """
         return {
-            "url": f"{self.base_url}/{self.salt}.{self.extension}",
-            "created_at": str(self.created_at)
+            "url": f"{self.base_url}/{self.name}.{self.extension}",
+            "created_at": str(self.created_at),
+            "library_id": self.library_id
         }
 
     def create(self, image_data):
         """
         Given an image in base64 form, does the following:
-        1. Rejects the image if it is not a support filetype
-        2. Generates a random string for the image filename
-        3. Decodes the image and attempts to upload it to AWS
+        1. Rejects the image if it is not a supported filetype
+        2. Decodes the image and attempts to upload it to AWS
         """
         try:
             ext = guess_extension(guess_type(image_data)[0])[1:]
-
+            
             # only accept supported file extensions
             if ext not in EXTENSIONS:
                 raise Exception(f"Unsupported file type: {ext}")
-
-            # secure way of generating a random string for image filename
-            salt = "".join(
-                random.SystemRandom().choice(
-                    string.ascii_uppercase + string.digits
-                )
-                for _ in range(16)
-            )
 
             # remove header of base64 string
             img_str = re.sub("^data:image/.+;base64,", "", image_data)
@@ -73,13 +80,12 @@ class Asset(db.Model):
             img = Image.open(BytesIO(img_data))
 
             self.base_url = S3_BASE_URL
-            self.salt = salt
             self.extension = ext
             self.width = img.width
             self.height = img.height
             self.created_at = datetime.datetime.now()
 
-            img_filename = f"{self.salt}.{self.extension}"
+            img_filename = f"{self.name}.{self.extension}"
             self.upload(img, img_filename)
 
         except Exception as e:
@@ -98,27 +104,31 @@ class Asset(db.Model):
             s3_client = boto3.client("s3")
             s3_client.upload_file(img_temploc, S3_BUCKET_NAME, img_filename)
 
-            # make S# image url public
+            # make S3 image url is public
             s3_resource = boto3.resource("s3")
             object_acl = s3_resource.ObjectAcl(S3_BUCKET_NAME, img_filename)
             object_acl.put(ACL="public-read")
 
             # remove image from server
             os.remove(img_temploc)
+            
         except Exception as e:
             print(f"Error when uploading image: {e}")
 
-
+        
 class User(db.Model):
     """
     User model
 
-    Has one-to-many relationship with Timeslot model
+    Has one-to-many relationship with Booking model
     """
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     net_id = db.Column(db.String, nullable=False)
     password = db.Column(db.String, nullable=False)
+
+    def getID(self):
+        return self.id
 
     def __init__(self, **kwargs):
         """
@@ -152,6 +162,7 @@ class Library(db.Model):
     Library model
 
     Has one-to-many relationship with Room model
+    Has one-to-one relationship with Asset model
     """
     __tablename__ = "libraries"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -180,9 +191,9 @@ class Library(db.Model):
 
     def serialize(self):
         """
-        Simple serialize Library object
+        Serialize Library object
         """
-        return {
+        res = {
             "id": self.id,
             "name": self.name,
             "area_id": self.area_id,
@@ -190,12 +201,17 @@ class Library(db.Model):
             "time_end": self.time_end
         }
 
+        asset = Asset.query.filter_by(library_id=self.id).first()
+        if asset is not None:
+            res["photo"] = asset.getURL()
+        return res
+
 
 class Room(db.Model):
     """
     Room model
 
-    Has many-to-one relationship with Timeslot model
+    Has many-to-one relationship with Booking model
     """
     __tablename__ = "rooms"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -248,15 +264,14 @@ class Room(db.Model):
             "capacity": self.capacity,
         }
 
-
-class Timeslot(db.Model):
+class Booking(db.Model):
     """
-    Timeslot model
+    Booking model
 
     Has many-to-one relationship with User model
     Has many-to-one relationship with Room model
     """
-    __tablename__ = "timeslots"
+    __tablename__ = "bookings"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=False)
@@ -281,7 +296,7 @@ class Timeslot(db.Model):
 
     def __init__(self, **kwargs):
         """
-        Initialize Timeslot object
+        Initialize Booking object
         """
         self.user_id = kwargs.get("user_id")
         self.room_id = kwargs.get("room_id")
@@ -289,7 +304,7 @@ class Timeslot(db.Model):
 
     def simple_serialize(self):
         """
-        Simple serialize Timeslot object
+        Simple serialize Booking object
         """
         return {
             "id": self.id,
@@ -300,7 +315,7 @@ class Timeslot(db.Model):
 
     def serialize(self):
         """
-        Serialize Timeslot object
+        Serialize Booking object
         """
         user = User.query.filter_by(id=(self.user_id)).first()
         room = Room.query.filter_by(id=(self.room_id)).first()
