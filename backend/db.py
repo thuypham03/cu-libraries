@@ -10,6 +10,7 @@ from PIL import Image
 import random
 import re
 import string
+
 db = SQLAlchemy()
 
 EXTENSIONS = ["png", "gif", "jpg", "jpeg"]
@@ -89,7 +90,7 @@ class Asset(db.Model):
 
         except Exception as e:
             print(f"Error when creating image: {e}")
-    
+
     def upload(self, img, img_filename):
         """
         Attempts to upload the image to the specified S3 bucket
@@ -114,6 +115,7 @@ class Asset(db.Model):
         except Exception as e:
             print(f"Error when uploading image: {e}")
 
+        
 class User(db.Model):
     """
     User model
@@ -154,6 +156,7 @@ class User(db.Model):
             "password": self.password
         }
 
+
 class Library(db.Model):
     """
     Library model
@@ -170,7 +173,7 @@ class Library(db.Model):
 
     def getTimeStart(self):
         return self.time_start
-    
+
     def getTimeEnd(self):
         return self.time_end
 
@@ -222,10 +225,10 @@ class Room(db.Model):
 
     def getName(self):
         return self.name
-    
+
     def getLibrary(self):
         return Library.query.filter_by(id=self.library_id).first()
-    
+
     def getLibraryName(self):
         library = self.getLibrary()
         return library.getName()

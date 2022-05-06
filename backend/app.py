@@ -1,5 +1,6 @@
 import json
 from db import db, User, Booking, Library, Room, Asset
+
 from flask import Flask, request
 import os
 
@@ -15,6 +16,8 @@ with app.app_context():
     db.create_all()
 
 # generalized response formats
+
+
 def success_response(data, code=200):
     return json.dumps(data), code
 
@@ -56,6 +59,7 @@ def create_user():
     db.session.commit()
     return success_response(new_user.simple_serialize(), 201)
 
+
 @app.route("/users/<int:user_id>/")
 def get_user_by_id(user_id):
     """
@@ -66,6 +70,7 @@ def get_user_by_id(user_id):
         return failure_response("User not found")
     return success_response(user.serialize())
 
+
 @app.route("/libraries/")
 def get_libraries():
     """
@@ -74,6 +79,7 @@ def get_libraries():
     return success_response(
         {"libraries": [lib.serialize() for lib in Library.query.all()]}
     )
+
 
 @app.route("/libraries/", methods=["POST"])
 def create_library():
@@ -89,10 +95,12 @@ def create_library():
     if name == -1 or area_id == -1 or time_start == -1 or time_end == -1:
         return failure_response("Missing request information", 400)
 
-    new_library = Library(name=name, area_id=area_id, time_start=time_start, time_end=time_end)
+    new_library = Library(name=name, area_id=area_id,
+                          time_start=time_start, time_end=time_end)
     db.session.add(new_library)
     db.session.commit()
     return success_response(new_library.serialize(), 201)
+
 
 @app.route("/libraries/areas/<int:area_id>/")
 def get_libraries_by_area(area_id):
@@ -104,6 +112,7 @@ def get_libraries_by_area(area_id):
        {"libraries": [lib.serialize() for lib in libraries]}
     )
 
+
 @app.route("/rooms/")
 def get_rooms():
     """
@@ -112,6 +121,7 @@ def get_rooms():
     return success_response(
         {"rooms": [room.simple_serialize() for room in Room.query.all()]}
     ) 
+
 
 @app.route("/rooms/", methods=["POST"])
 def create_room():
@@ -134,6 +144,7 @@ def create_room():
     db.session.add(new_room)
     db.session.commit()
     return success_response(new_room.simple_serialize(), 201)
+
 
 @app.route("/rooms/libraries/<int:library_id>/")
 def get_rooms_by_library(library_id):
@@ -159,6 +170,7 @@ def get_rooms_by_library(library_id):
         res.append(serialize)
 
     return success_response({"rooms": res})
+
 
 @app.route("/bookings/", methods=["POST"])
 def create_booking():
@@ -189,9 +201,11 @@ def create_booking():
 
     new_booking = Booking(user_id=user_id, room_id=room_id, time_start=time_start)
     db.session.add(new_booking)
+
     db.session.commit()
     return success_response(new_booking.simple_serialize(), 201)
 
+  
 @app.route("/bookings/users/<string:net_id>/")
 def get_bookings_by_user(net_id):
     """
@@ -216,6 +230,7 @@ def get_bookings_by_user(net_id):
 
     return success_response({"bookings":res})
 
+
 @app.route("/bookings/delete/<int:booking_id>/", methods=["DELETE"])
 def delete_booking(booking_id):
     """
@@ -229,6 +244,7 @@ def delete_booking(booking_id):
     db.session.commit()
     return success_response(booking.simple_serialize())
 
+  
 @app.route("/photos/")
 def get_photo():
     """
@@ -238,6 +254,7 @@ def get_photo():
         {"photos": [photo.serialize() for photo in Asset.query.all()]}
     ) 
 
+  
 @app.route("/libraries/upload/<int:library_id>/", methods=["POST"])
 def upload(library_id):
     """
@@ -261,6 +278,24 @@ def upload(library_id):
     db.session.add(new_asset)
     db.session.commit()
     return success_response(new_asset.serialize(), 201)
+
+
+@app.route("/upload/", methods=["POST"])
+def upload():
+    """
+    Endpoint for uploading an image to AWS given its base64 form,
+    then storing/returning the URL of that image
+    """
+    body = json.loads(request.data)
+    image_data = body.get("image_data")
+    if image_data is None:
+        return failure_response("No base64 image passed in!")
+
+    asset = Asset(image_data=image_data)
+    db.session.add(asset)
+    db.session.commit()
+    return success_response(asset.serialize(), 201)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
