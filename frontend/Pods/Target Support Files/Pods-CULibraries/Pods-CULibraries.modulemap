@@ -1,0 +1,6 @@
+framework module Pods_CULibraries {
+  umbrella header "Pods-CULibraries-umbrella.h"
+
+  export *
+  module * { export * }
+}
