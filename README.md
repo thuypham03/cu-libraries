@@ -20,11 +20,11 @@ Important Note: We are currently supporting booking in ONE day! We will learn to
 - If the user clicks “Reservation” tab at the bottom, a list of their reservations will appear, and they can choose to delete reservations for each timeslot shown.
 
 
-# BACKEND:
+# BACKEND
 
 - API Documentation: https://docs.google.com/document/d/1ywUjJc4_yvBZuMV0D63lJwHDrreQDtOI8kBjMVxYhwI/edit?usp=sharing
 - Backend Description: https://docs.google.com/document/d/1W8lhM8hBVjfUoe-NPA9ZgpXuEmlsA9T6jhBeMNyyuek/edit?usp=sharing
 
-# FRONTEND:
+# FRONTEND
 
 - Frontend Description: https://docs.google.com/document/d/1-Qd7JGyn8GWle-cYyVqBFCDmmU3RKE3xv72TUKm4fVI/edit?usp=sharing
