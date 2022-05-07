@@ -211,7 +211,7 @@ class Room(db.Model):
     """
     Room model
 
-    Has many-to-one relationship with Booking model
+    Has one-to-many relationship with Booking model
     """
     __tablename__ = "rooms"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
