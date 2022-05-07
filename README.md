@@ -4,6 +4,10 @@ Our BOOKED - “Book a Study Space” app will enable the user to book a study s
 1) Allow the user to see/ search for open study spaces 
 2) Allow the user to reserve, keep track of the spaces they have reserved, including the times for which they have it booked, and delete their reservation
  
+# DEMO VIDEO
+
+https://www.youtube.com/watch?v=4wOO3DZTrUA
+ 
 # APP FLOW
 
 Important Note: We are currently supporting booking in ONE day! We will learn to implement calendar/ date management for booking in the future later!
